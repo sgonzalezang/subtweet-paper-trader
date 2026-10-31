@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="theme-color" content="#0b0e14" />
+<title>subtweet-trader · live</title>
+<style>
+  :root {
+    --bg: #0b0e14; --panel: #141922; --panel2: #1b2230; --line: #263143;
+    --fg: #e6edf3; --muted: #8b98a9; --green: #3fb950; --red: #f85149;
+    --amber: #d29922; --accent: #58a6ff;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1100px; margin: 0 auto;
+    padding: calc(8px + env(safe-area-inset-top, 0px))
+             calc(14px + env(safe-area-inset-right, 0px))
+             calc(24px + env(safe-area-inset-bottom, 0px))
+             calc(14px + env(safe-area-inset-left, 0px)); }
+  h1 { font-size: 15px; margin: 0; letter-spacing: .3px; }
+  .sub { color: var(--muted); font-size: 12px; }
+  .muted { color: var(--muted); }
+  .pos { color: var(--green); } .neg { color: var(--red); }
+
+  /* ---- passphrase gate ---- */
+  .gate { max-width: 380px; margin: 10vh auto 0; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 12px; padding: 28px;
+    margin-left: max(14px, calc(50% - 190px)); margin-right: max(14px, calc(50% - 190px)); }
+  .gate h1 { font-size: 18px; margin-bottom: 6px; }
+  input[type=password] { width: 100%; padding: 12px; margin: 14px 0;
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 8px;
+    color: var(--fg); font-size: 16px; } /* 16px: stops iOS focus auto-zoom */
+  button { background: var(--accent); color: #04121f; border: 0; border-radius: 8px;
+    padding: 12px 16px; min-height: 44px; font-weight: 600; cursor: pointer; width: 100%; }
+  button:disabled { opacity: .5; cursor: default; }
+  .err { color: var(--red); font-size: 12px; min-height: 16px; }
+  .remember { display: flex; align-items: center; gap: 8px; color: var(--muted);
+    font-size: 12px; margin: 2px 0 14px; cursor: pointer; user-select: none;
+    min-height: 32px; }
+  .remember input { width: auto; margin: 0; }
+
+  /* ---- one-line header ---- */
+  header { display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 12px; }
+  .beat { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    flex: none; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+  #updated { font-size: 11px; white-space: nowrap; overflow: hidden;
+    text-overflow: clip; }
+  .hspace { flex: 1; }
+  .icon { width: 44px; height: 44px; min-height: 44px; flex: none; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    color: var(--fg); font-size: 17px; text-decoration: none; cursor: pointer; }
+  .banner { background: rgba(248,81,73,.12); border: 1px solid rgba(248,81,73,.45);
+    color: var(--red); border-radius: 10px; padding: 10px 12px; font-size: 13px;
+    margin-bottom: 12px; }
+
+  /* ---- trader toggle (segmented control; slim row under the header) ---- */
+  .segbar { display: flex; width: fit-content; gap: 3px; margin-bottom: 12px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 3px; }
+  .seg { width: auto; min-height: 44px; padding: 0 16px; font-size: 13px;
+    font-weight: 600; color: var(--muted); background: none; border: 0;
+    border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center;
+    justify-content: center; gap: 6px; white-space: nowrap; }
+  .seg[aria-selected="true"] { color: var(--fg); background: var(--panel2); }
+  .seg:not([aria-selected="true"]):hover { color: var(--fg); }
+
+  /* ---- hero ---- */
+  .hero { background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  .hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px; }
+  /* Three books: force a compact 3-across row and shrink the glance numbers so
+     they stay legible (and never overflow) at 390px. A/B-only keeps the big type. */
+  .hero-grid.three { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .hero-grid.three .hv { font-size: 22px; letter-spacing: -.3px; }
+  .hero-grid.three .hk { font-size: 10px; letter-spacing: .3px; gap: 4px; }
+  .hero-grid.three .heq { font-size: 12px; }
+  .hk { color: var(--muted); font-size: 11px; text-transform: uppercase;
+    letter-spacing: .5px; display: flex; align-items: center; gap: 6px; }
+  .hv { font-size: 30px; font-weight: 700; letter-spacing: -.5px; margin-top: 2px; }
+  .heq { font-size: 13px; color: var(--muted); }
+  .bk { display: inline-block; min-width: 18px; text-align: center; font-size: 11px;
+    font-weight: 700; line-height: 1.3; border-radius: 5px; padding: 1px 4px;
+    border: 1px solid var(--line); }
+  .bka { color: var(--accent); border-color: rgba(88,166,255,.45); background: rgba(88,166,255,.12); }
+  .bkb { color: var(--amber); border-color: rgba(210,153,34,.45); background: rgba(210,153,34,.12); }
+  .bkc { color: #bc8cff; border-color: rgba(188,140,255,.45); background: rgba(188,140,255,.12); }
+  .bkban { color: var(--amber); border-color: rgba(210,153,34,.45); background: rgba(210,153,34,.12); }
+  .sb { border-top: 1px solid var(--panel2); margin-top: 12px; padding-top: 10px; }
+  .sb-label { color: var(--muted); font-size: 12px; text-transform: uppercase;
+    letter-spacing: .4px; }
+  .sb-val { font-size: 26px; font-weight: 700; }
+  .sb-sub { font-size: 14px; color: var(--muted); }
+  .sb-empty { color: var(--muted); font-size: 14px; }
+  .sb-totals { font-size: 19px; font-weight: 700; display: flex; flex-wrap: wrap;
+    gap: 4px 12px; align-items: baseline; margin-top: 4px; }
+  #mirror { margin-top: 8px; }
+
+  /* ---- chart ---- */
+  .chart { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 14px 6px; margin-bottom: 12px; }
+  .chart-head { display: flex; justify-content: space-between; align-items: center;
+    gap: 8px; flex-wrap: wrap; }
+  .chart-head .k { color: var(--muted); font-size: 11px; text-transform: uppercase;
+    letter-spacing: .5px; }
+  #chartTabs { display: flex; gap: 2px; }
+  .tab { display: flex; align-items: center; justify-content: center;
+    min-width: 44px; min-height: 44px; padding: 0 6px; font-size: 13px;
+    color: var(--muted); text-decoration: none; border-radius: 8px; }
+  .tab.on { color: var(--fg); font-weight: 700; background: var(--panel2); }
+  #equityChart { width: 100%; height: 160px; display: block; }
+  #chartRange { display: block; padding: 4px 0 6px; }
+
+  /* ---- panels & details ---- */
+  section.panel, details.panel { background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 0 14px; margin-bottom: 12px; }
+  section.panel { padding-bottom: 8px; }
+  section.panel h2, summary { font-size: 13px; text-transform: uppercase;
+    letter-spacing: .5px; color: var(--muted); font-weight: 600; margin: 0;
+    min-height: 44px; display: flex; align-items: center; }
+  summary { cursor: pointer; list-style-position: inside; }
+  summary::-webkit-details-marker { margin-right: 6px; }
+  .dbody { padding-bottom: 12px; }
+  .empty { color: var(--muted); padding: 10px 0; font-size: 13px; }
+
+  /* ---- generic card rows (positions / trades / round trips) ---- */
+  .row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px;
+    padding: 9px 0; border-bottom: 1px solid var(--panel2); font-size: 13px; }
+  .row:last-child { border-bottom: 0; }
+  .rsym { font-weight: 600; overflow-wrap: anywhere; }
+  .rpnl { margin-left: auto; font-weight: 600; white-space: nowrap; }
+  .rmid { flex-basis: 100%; padding-left: 26px; font-size: 12px; color: var(--muted);
+    overflow-wrap: anywhere; }
+  .side-buy { color: var(--green); } .side-sell { color: var(--red); }
+
+  /* ---- A vs B pair cards ---- */
+  .pair { border: 1px solid var(--panel2); border-radius: 10px; padding: 10px 12px;
+    margin: 0 0 10px; }
+  .pair-head { display: flex; align-items: baseline; gap: 8px; }
+  .pair-delta { margin-left: auto; font-weight: 700; white-space: nowrap; }
+  .pair-entry { font-size: 12px; margin: 2px 0 8px; }
+  .pair-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pside { min-width: 0; }
+  .pside-h { display: flex; align-items: baseline; gap: 6px; font-weight: 600;
+    margin-bottom: 4px; }
+  .exitrow { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+
+  /* ---- unified per-entry comparison: three book-rows under one entry ---- */
+  .brows { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .brow { border-left: 2px solid var(--panel2); padding-left: 10px; }
+  .brow-a { border-left-color: rgba(88,166,255,.55); }
+  .brow-b { border-left-color: rgba(210,153,34,.55); }
+  .brow-c { border-left-color: rgba(188,140,255,.55); }
+  .brow.muted { border-left-color: var(--line); }
+  .brow-head { display: flex; align-items: baseline; gap: 8px; font-weight: 600; }
+  .brow-pnl { white-space: nowrap; }
+  .brow-exits { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap;
+    gap: 4px 8px; margin-top: 3px; overflow-wrap: anywhere; }
+  .exitchip { overflow-wrap: anywhere; }
+  .bnh { color: var(--muted); font-weight: 500; }
+  .stat { font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .04em; padding: 1px 6px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--muted); }
+  .stat.closed { color: var(--green); border-color: rgba(63,185,80,.4);
+    background: rgba(63,185,80,.12); }
+  .stat.open { color: var(--amber); border-color: rgba(210,153,34,.4);
+    background: rgba(210,153,34,.12); }
+
+  .srcchip { display: inline-block; font-size: 10px; color: var(--fg);
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 999px;
+    padding: 0 6px; }
+  .abk { color: var(--muted); font-size: 11px; text-transform: uppercase;
+    letter-spacing: .5px; margin: 14px 0 4px; }
+  .abtbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .abtbl th, .abtbl td { text-align: right; padding: 5px 4px;
+    border-bottom: 1px solid var(--panel2); white-space: nowrap; }
+  .abtbl th:first-child, .abtbl td:first-child { text-align: left; }
+  .abtbl th { color: var(--muted); font-weight: 500; font-size: 11px;
+    text-transform: uppercase; }
+  #abspark { width: 100%; height: 44px; display: block; margin-top: 6px; }
+
+  .badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 6px;
+    border-radius: 999px; background: rgba(210,153,34,.15); color: var(--amber);
+    border: 1px solid rgba(210,153,34,.4); }
+  .badge.traded { background: rgba(63,185,80,.15); color: var(--green);
+    border-color: rgba(63,185,80,.4); }
+
+  /* ---- tweets (natural height — no inner scroller) ---- */
+  .tw { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px; margin-bottom: 10px; }
+  .tw.rev { border-color: rgba(210,153,34,.5); }
+  .tw-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+  .tw-text { font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+  .tw-meta { color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .tw-read { margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .read { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+  .read.sig { background: rgba(88,166,255,.12); color: var(--accent);
+    border: 1px solid rgba(88,166,255,.4); }
+  .read.nosig { background: var(--panel); color: var(--muted); border: 1px solid var(--line); }
+  .read-conf { color: var(--muted); font-size: 12px; }
+  .tw-trades { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: var(--panel);
+    border: 1px solid var(--line); overflow-wrap: anywhere; }
+  .chip.buy { color: var(--green); } .chip.sell { color: var(--red); }
+  .chip.exit { color: var(--muted); }
+  .tw-foot { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .note { font-size: 13px; background: var(--panel); border-radius: 6px; padding: 6px 9px;
+    border-left: 2px solid var(--accent); white-space: pre-wrap; word-break: break-word; }
+  .note-meta { color: var(--muted); font-size: 11px; }
+  .addnote { align-self: flex-start; font-size: 13px; color: var(--accent);
+    background: none; border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 14px; min-height: 44px; width: auto; cursor: pointer; font-weight: 400; }
+  .addnote:hover { border-color: var(--accent); }
+  .noteform { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+  .noteform input, .noteform textarea { background: var(--panel); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 10px; font: inherit;
+    font-size: 16px; width: 100%; }
+  .noteform textarea { min-height: 64px; resize: vertical; }
+  .note-actions { display: flex; align-items: center; gap: 10px; }
+  .note-save { width: auto; font-size: 13px; padding: 8px 14px; }
+  .note-status { color: var(--muted); font-size: 12px; }
+
+  /* ---- review flags ---- */
+  .rev-tweet { flex-basis: 100%; padding-left: 26px; font-size: 12px;
+    color: var(--muted); overflow-wrap: anywhere; }
+
+  .stats { padding: 4px 2px 10px; line-height: 2; }
+  .foot { padding: 0 2px; }
+
+  /* ---- changelog modal ---- */
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.62); z-index: 50;
+    display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .modal-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    width: min(600px, 100%); max-height: 82vh; display: flex; flex-direction: column; }
+  .modal-head { display: flex; justify-content: space-between; align-items: center;
+    padding: 13px 16px; border-bottom: 1px solid var(--line); }
+  .modal-body { overflow-y: auto; padding: 14px 16px; }
+  .btn-sm { width: auto; min-height: 44px; font-size: 13px; padding: 8px 14px; }
+  .cl { background: var(--panel2); border: 1px solid var(--line); border-left: 3px solid var(--line);
+    border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .cl-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .cl-when { color: var(--muted); font-size: 11px; margin-left: auto; }
+  .cl-sum { color: var(--muted); font-size: 13px; margin-top: 3px; white-space: pre-wrap; }
+  .cl-kind { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+  .cl-kind.fix { color: var(--green); border-color: rgba(63,185,80,.4); background: rgba(63,185,80,.12); }
+  .cl-kind.feature { color: var(--amber); border-color: rgba(210,153,34,.4); background: rgba(210,153,34,.12); }
+  .cl-kind.ops { color: #58a6ff; border-color: rgba(88,166,255,.4); background: rgba(88,166,255,.12); }
+
+  /* ---- desktop: two columns (mobile styles above are the default) ---- */
+  @media (min-width: 900px) {
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+      align-items: start; }
+    .hv { font-size: 34px; }
+  }
+</style>
+</head>
+<body>
+<div id="gate" class="gate">
+  <h1>subtweet-trader</h1>
+  <div class="sub">Enter passphrase to view the live paper account.</div>
+  <input id="pass" type="password" placeholder="passphrase" autocomplete="off" />
+  <label class="remember"><input id="remember" type="checkbox" /> Remember me on this device</label>
+  <button id="unlock">Unlock</button>
+  <div id="err" class="err"></div>
+</div>
+
+<div id="app" class="wrap" style="display:none">
+  <header>
+    <span class="beat"></span>
+    <h1>subtweet</h1>
+    <span id="updated" class="sub">—</span>
+    <span class="hspace"></span>
+    <button id="refresh" class="icon" aria-label="Refresh" title="Refresh">⟳</button>
+    <button id="clOpen" class="icon" aria-label="Changelog" title="Changelog">🛠</button>
+    <a href="#" id="lock" class="icon" aria-label="Lock" title="Lock">🔒</a>
+  </header>
+  <div id="traderTabs" class="segbar" role="tablist" aria-label="Trader">
+    <button id="traderSam" class="seg" type="button" role="tab" aria-selected="true" data-trader="sam">Sam</button>
+    <button id="traderBanana" class="seg" type="button" role="tab" aria-selected="false" data-trader="banana">🍌 Banana</button>
+  </div>
+  <div id="traderNotice" class="banner" style="display:none"></div>
+  <div id="pipeBanner" class="banner" style="display:none"></div>
+  <div id="bBanner" class="banner" style="display:none"></div>
+  <div id="cBanner" class="banner" style="display:none"></div>
+
+  <div class="cols">
+  <div class="col">
+    <section class="hero">
+      <div class="hero-grid">
+        <div class="hcell">
+          <div class="hk"><span id="aBadge" class="bk bka">A</span> Day P&amp;L</div>
+          <div id="aDay" class="hv">—</div>
+          <div id="aEq" class="heq"></div>
+        </div>
+        <div class="hcell" id="bCell" style="display:none">
+          <div class="hk"><span class="bk bkb">B</span> Day P&amp;L</div>
+          <div id="bDay" class="hv">—</div>
+          <div id="bEq" class="heq"></div>
+        </div>
+        <div class="hcell" id="cCell" style="display:none">
+          <div class="hk"><span class="bk bkc">C</span> Day P&amp;L</div>
+          <div id="cDay" class="hv">—</div>
+          <div id="cEq" class="heq"></div>
+        </div>
+      </div>
+      <div id="cNote" class="sub muted" style="display:none"></div>
+      <div id="sharedTotals" class="sb" style="display:none"></div>
+      <div id="mirror" class="sub" style="display:none"></div>
+      <div id="mirrorC" class="sub" style="display:none"></div>
+    </section>
+
+    <details id="secShared" class="panel" style="display:none">
+      <summary>Same entries — each book's exit</summary>
+      <div id="sharedBody" class="dbody"></div>
+    </details>
+
+    <section id="chartSec" class="chart">
+      <div class="chart-head">
+        <span><span class="k">Equity</span> <span id="chartDelta" class="sub"></span></span>
+        <span id="chartTabs"></span>
+      </div>
+      <svg id="equityChart" viewBox="0 0 600 160" preserveAspectRatio="none"></svg>
+      <span id="chartRange" class="sub muted"></span>
+    </section>
+
+    <section class="panel">
+      <h2>Open positions</h2>
+      <div id="posList"></div>
+    </section>
+  </div>
+
+  <div class="col">
+    <details id="secTrades" class="panel" open>
+      <summary>Recent trades</summary>
+      <div id="logList" class="dbody"></div>
+    </details>
+    <details id="secRT" class="panel">
+      <summary>Closed round trips</summary>
+      <div id="rtList" class="dbody"></div>
+    </details>
+    <details id="secTweets" class="panel">
+      <summary id="tweetsSummary">Tweets — last 2 days</summary>
+      <div id="tweets" class="dbody"></div>
+    </details>
+    <details id="secReview" class="panel" style="display:none">
+      <summary>⚑ Review flags</summary>
+      <div id="revList" class="dbody"></div>
+    </details>
+    <div id="stats" class="stats sub"></div>
+    <div class="sub muted foot">Paper trading. Not investment advice. Data is end-to-end
+      encrypted in a public repo; anyone with the passphrase can read it.</div>
+  </div>
+  </div>
+
+  <div id="clModal" class="modal" style="display:none">
+    <div class="modal-card">
+      <div class="modal-head"><b>🛠 Changelog</b>
+        <button id="clClose" class="btn-sm">close</button></div>
+      <div id="changelog" class="modal-body"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Encrypted state lives beside this page; the publisher overwrites it each cycle.
+// Two traders publish sibling state files on the same branch; the header toggle
+// (persisted in localStorage) picks which one this page loads and refreshes.
+const TRADER_URLS = { sam: "state.enc.json", banana: "state_banana.enc.json" };
+const TRADER_KEY = "subtweet_dash_trader";
+function currentTrader(){
+  return localStorage.getItem(TRADER_KEY) === "banana" ? "banana" : "sam";
+}
+function stateUrl(){ return TRADER_URLS[currentTrader()] || TRADER_URLS.sam; }
+// "Remember me" stores the passphrase in this browser only (localStorage).
+// Anyone with access to this device/profile can then read the data — use the
+// "lock" link to forget it. The data itself stays encrypted at rest in the repo.
+const STORAGE_KEY = "subtweet_dash_pass";
+const $ = (id) => document.getElementById(id);
+
+function b64(s){ return Uint8Array.from(atob(s), c => c.charCodeAt(0)); }
+
+async function deriveKey(passphrase, salt, iterations){
+  const base = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name:"PBKDF2", salt, iterations, hash:"SHA-256" },
+    base, { name:"AES-GCM", length:256 }, false, ["decrypt"]);
+}
+
+async function decrypt(env, passphrase){
+  const key = await deriveKey(passphrase, b64(env.salt), env.iterations);
+  const pt = await crypto.subtle.decrypt(
+    { name:"AES-GCM", iv: b64(env.iv) }, key, b64(env.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+let PASS = null;
+function money(v){ const n = Number(v); return (n<0?"-$":"$") + Math.abs(n)
+  .toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+// Whole-dollar signed money for the glance numbers.
+function money0(v){ const n = Number(v) || 0;
+  return (n<0?"-$":"+$") + Math.abs(Math.round(n)).toLocaleString(); }
+function mfmt(v){ return v==null ? "—" : money0(v); }
+function cls(v){ return Number(v) >= 0 ? "pos" : "neg"; }
+function conf(c){ return c==null ? '<span class="muted">—</span>'
+  : (Math.round(c*100)+"%"); }
+// Escapes quotes too: esc() output is interpolated into HTML *attributes*
+// (e.g. title="..."), and innerHTML serialization alone leaves " untouched,
+// which would let a crafted tweet break out of the attribute.
+function esc(s){ const d=document.createElement("div"); d.textContent = s||"";
+  return d.innerHTML.replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+
+// Compact timestamps: HH:MM if today (viewer-local), M/D otherwise.
+function fmtTs(ts){ const d = new Date(ts); if (isNaN(d)) return "";
+  const now = new Date();
+  if (d.toDateString() === now.toDateString())
+    return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", hour12:false});
+  return (d.getMonth()+1) + "/" + d.getDate(); }
+function fmtDate(s){ const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s||""));
+  return m ? Number(m[2]) + "/" + Number(m[3]) : esc(String(s||"")); }
+
+// OCC option symbol -> human ("QQQ260814C00740000" -> "QQQ 8/14 $740C").
+function humanOCC(s){
+  const m = /^([A-Z.]{1,6})(\d{2})(\d{2})(\d{2})([CP])(\d{8})$/.exec(String(s||""));
+  if (!m) return null;
+  const strike = Number(m[6]) / 1000;
+  return m[1] + " " + Number(m[3]) + "/" + Number(m[4]) + " $"
+    + (strike % 1 ? strike : strike.toFixed(0)) + m[5];
+}
+// Rendered symbol: humanized when OCC, raw preserved in the title attribute.
+function sym(s){ const h = humanOCC(s);
+  return h ? `<span class="rsym" title="${esc(s)}">${esc(h)}</span>`
+           : `<span class="rsym">${esc(s)}</span>`; }
+function bk(tag){
+  // Banana's single book badges as 🍌 (amber pill) instead of a letter.
+  if (tag === "BAN") return `<span class="bk bkban" title="Banana">🍌</span>`;
+  return `<span class="bk bk${tag.toLowerCase()}">${tag}</span>`;
+}
+
+// --- note submission: encrypt in-browser, POST to the Worker ----------------
+let STATE = null, TWEETS = [], EDITING = false;
+const b64e = (u8) => btoa(String.fromCharCode.apply(null, u8));
+
+async function encryptNote(obj, passphrase){
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const base = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name:"PBKDF2", salt, iterations:200000, hash:"SHA-256" },
+    base, { name:"AES-GCM", length:256 }, false, ["encrypt"]);
+  const pt = new TextEncoder().encode(JSON.stringify(obj));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name:"AES-GCM", iv }, key, pt));
+  return { v:1, kdf:"PBKDF2-SHA256", iterations:200000, cipher:"AES-256-GCM",
+           salt:b64e(salt), iv:b64e(iv), ct:b64e(ct) };
+}
+
+async function submitNote(tweet, text, by){
+  const endpoint = STATE && STATE.notes_endpoint;
+  const secret = STATE && STATE.notes_submit_secret;
+  if(!endpoint) throw new Error("notes not configured");
+  const ts = new Date().toISOString();
+  const obj = { tweet_id: tweet.tweet_id, note: text, by: by || "anon", ts };
+  const envelope = await encryptNote(obj, PASS);
+  const safeId = String(tweet.tweet_id).replace(/[^A-Za-z0-9._-]/g, "");
+  const rand = b64e(crypto.getRandomValues(new Uint8Array(4))).replace(/[^A-Za-z0-9]/g,"").slice(0,6);
+  const path = "notes/" + safeId + "__" + Date.now() + "_" + rand + ".json";
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ secret, path, content: JSON.stringify(envelope) }),
+  });
+  if(!res.ok) throw new Error("submit failed (" + res.status + ")");
+}
+
+// ---------------------------------------------------------------------------
+// Rendering. The <details> shells are static in the HTML; render() only fills
+// their children, so a section's open/closed state survives every refresh.
+// ---------------------------------------------------------------------------
+let LAST_GEN = null, SHARED_AUTO = false;
+
+function render(st){
+  STATE = st;
+  // Same snapshot as last time -> nothing changed; skip the innerHTML rebuild
+  // entirely (rebuilding identical DOM every 20s caused scroll jank on iOS).
+  if (st.generated_at && st.generated_at === LAST_GEN) return;
+  LAST_GEN = st.generated_at || null;
+
+  // --- trader identity: banana ships trader:"banana"; Sam omits the key so the
+  // absent-key case renders exactly as before (single "A" control book). ------
+  const isBanana = st.trader === "banana";
+  const primaryTag = isBanana ? "BAN" : "A";
+  // Hero badge: 🍌 for the lone banana book, "A" for Sam's control book. Label
+  // ("Day P&L") is untouched.
+  const aBadge = $("aBadge");
+  if (aBadge){
+    if (isBanana){ aBadge.className = "bk bkban"; aBadge.textContent = "🍌"; aBadge.title = "Banana"; }
+    else { aBadge.className = "bk bka"; aBadge.textContent = "A"; aBadge.removeAttribute("title"); }
+  }
+  // Tweets section header names the account on banana; generic for Sam.
+  const twSum = $("tweetsSummary");
+  if (twSum) twSum.textContent = isBanana ? "@Banana3Stocks — last 2 days" : "Tweets — last 2 days";
+
+  // Watchdog verdict: a green pulsing dot over a dead pipeline is a lie.
+  const ph = st.pipeline || {};
+  const down = !!(ph.stale || ph.ok === false);
+  const beat = document.querySelector(".beat");
+  if (beat) beat.style.background = down ? "var(--red)" : "var(--green)";
+  $("updated").textContent = "updated " + fmtTs(st.generated_at);
+  $("updated").title = new Date(st.generated_at).toLocaleString();
+  const pb = $("pipeBanner");
+  if (down){
+    pb.style.display = "";
+    pb.textContent = "pipeline DOWN (" + (ph.error ||
+      (ph.age_s != null ? Math.round(ph.age_s) + "s stale" : "no heartbeat")) + ")";
+  } else { pb.style.display = "none"; pb.textContent = ""; }
+
+  // --- hero: each book's own real day move -------------------------------
+  const a = st.account || {};
+  const bookB = st.book_b || null;
+  const bacct = bookB && bookB.account ? bookB.account : null;
+  const bookC = st.book_c || null;
+  const cacct = bookC && bookC.account ? bookC.account : null;
+  const aDay = Number(a.equity) - Number(a.last_equity);
+  $("aDay").textContent = money0(aDay);
+  $("aDay").className = "hv " + cls(aDay);
+  $("aEq").textContent = money(a.equity);
+  if (bacct){
+    const bDay = Number(bacct.equity) - Number(bacct.last_equity);
+    $("bCell").style.display = "";
+    $("bDay").textContent = money0(bDay);
+    $("bDay").className = "hv " + cls(bDay);
+    $("bEq").textContent = money(bacct.equity);
+  } else {
+    $("bCell").style.display = "none";
+  }
+  if (cacct){
+    const cDay = Number(cacct.equity) - Number(cacct.last_equity);
+    $("cCell").style.display = "";
+    $("cDay").textContent = money0(cDay);
+    $("cDay").className = "hv " + cls(cDay);
+    $("cEq").textContent = money(cacct.equity);
+  } else {
+    $("cCell").style.display = "none";
+  }
+  // Third book => compact 3-across hero; otherwise keep the big A/B numbers.
+  const heroGrid = document.querySelector(".hero-grid");
+  if (heroGrid) heroGrid.classList.toggle("three", !!cacct);
+
+  // C "starts Monday" note: book present but nothing traded yet.
+  const cZero = !!bookC
+    && !((bookC.trade_log || []).length)
+    && !((bookC.positions || []).length)
+    && !(bookC.summary && Number(bookC.summary.closed_trades));
+  const cNote = $("cNote");
+  if (cZero){ cNote.style.display = ""; cNote.textContent = "C starts Monday — no trades yet"; }
+  else { cNote.style.display = "none"; cNote.textContent = ""; }
+
+  const bs = st.b_status;
+  const bban = $("bBanner");
+  if (bs && bs.ok === false){
+    bban.style.display = "";
+    bban.textContent = "B book snapshot unavailable (fetch failed this cycle)";
+    bban.title = bs.error || "";
+  } else { bban.style.display = "none"; bban.textContent = ""; }
+
+  // C banner: only when the payload is C-aware (new schema) AND C came back null
+  // this cycle, or c_status reports an error. Stale A/B-only payloads (no C keys
+  // at all) show nothing here and render exactly as the two-book page.
+  const cAware = ("book_c" in st) || ("c_status" in st) || ("shared" in st);
+  const cst = st.c_status || null;
+  const cUnavail = (cst && cst.ok === false)
+    || (cAware && ("book_c" in st) && st.book_c === null);
+  const cban = $("cBanner");
+  if (cUnavail){
+    cban.style.display = "";
+    cban.textContent = "[C] snapshot unavailable";
+    cban.title = (cst && cst.error) || "";
+  } else { cban.style.display = "none"; cban.textContent = ""; }
+
+  renderSharedTotals(st.shared || null);
+  renderMirrorEl("mirror", st.mirror_b || null, "mirror", "b_legs");
+  renderMirrorEl("mirrorC", st.mirror_c || null, "mirror-C", "c_legs");
+  renderChart(st);
+  renderShared(st);
+
+  // --- merged open positions (card rows; A/B letter badges) --------------
+  const posRows = [];
+  (st.positions || []).forEach(p => posRows.push([p, primaryTag]));
+  if (bookB && bookB.positions) bookB.positions.forEach(p => posRows.push([p, "B"]));
+  if (bookC && bookC.positions) bookC.positions.forEach(p => posRows.push([p, "C"]));
+  $("posList").innerHTML = posRows.length ? posRows.map(([p, tag]) =>
+    `<div class="row">${bk(tag)} ${sym(p.symbol)}
+       <span class="rpnl ${cls(p.unrealized_pnl)}">${money0(p.unrealized_pnl)}</span>
+       <span class="rmid">${esc(String(p.qty))} × ${money(p.avg_entry)} → ${money(p.current)}</span>
+     </div>`).join("")
+    : `<div class="empty">No open positions</div>`;
+
+  // --- review flags (hidden entirely when empty) -------------------------
+  const rev = st.review_flags || [];
+  $("secReview").style.display = rev.length ? "" : "none";
+  $("revList").innerHTML = rev.slice().reverse().map(r =>
+    `<div class="row">${sym(r.symbol)}
+       <span class="badge">${conf(r.confidence)}</span>
+       <span class="rpnl muted">${fmtTs(r.ts)}</span>
+       <span class="rev-tweet">${esc(r.tweet)}</span>
+     </div>`).join("");
+
+  // --- tweets feed (natural height; collapsed <details> holds it) --------
+  const tweets = st.tweets || [];
+  TWEETS = tweets;
+  const canNote = !!st.notes_endpoint;
+  $("tweets").innerHTML = tweets.length ? tweets.map((t, i) => {
+    const chips = (t.trades||[]).map(tr => {
+      const k = tr.kind === "exit" ? "exit" : tr.side;
+      const verb = tr.kind === "exit" ? "closed" : tr.side;
+      return `<span class="chip ${k}">${verb} ${tr.qty} ${esc(tr.ticker)} @ ${money(tr.price)}</span>`;
+    }).join("");
+    let read;
+    if (t.is_signal && t.ticker) {
+      read = `<span class="read sig">${esc(t.ticker)} ${esc(t.side||"")}</span>`
+           + `<span class="read-conf">Groq ${conf(t.confidence)}</span>`;
+    } else {
+      read = `<span class="read nosig">no signal</span>`;
+    }
+    const tradedBadge = t.traded ? `<span class="badge traded">traded</span>` : "";
+    const reviewBadge = t.review ? `<span class="badge">review</span>` : "";
+    const notes = (t.notes||[]).map(n =>
+      `<div class="note"><span class="note-meta">${esc(n.author)} · ${new Date(n.created_at).toLocaleDateString()}</span><br>${esc(n.note)}</div>`
+    ).join("");
+    const foot = canNote ? `
+      <button class="addnote" data-tw="${i}">+ note</button>
+      <div class="noteform" data-tw="${i}" style="display:none">
+        <input class="note-by" placeholder="your name (optional)" />
+        <textarea class="note-text" placeholder="what did this tweet mean? what should the trade have been?"></textarea>
+        <div class="note-actions">
+          <button class="note-save" data-tw="${i}">Save note</button>
+          <span class="note-status"></span>
+        </div>
+      </div>` : "";
+    return `<div class="tw ${t.review?'rev':''}">
+      <div class="tw-head">
+        <div class="tw-text">${esc(t.text)}</div>
+        <div class="tw-meta">${fmtTs(t.ts)}</div>
+      </div>
+      <div class="tw-read">${read} ${tradedBadge} ${reviewBadge}</div>
+      <div class="tw-trades">${chips}</div>
+      <div class="tw-foot">${notes}${foot}</div>
+    </div>`;
+  }).join("") : `<div class="empty">No tweets traded yet</div>`;
+
+  // --- merged round trips ------------------------------------------------
+  const rts = [];
+  (st.round_trips || []).forEach(r => rts.push([r, primaryTag]));
+  if (bookB && bookB.round_trips) bookB.round_trips.forEach(r => rts.push([r, "B"]));
+  if (bookC && bookC.round_trips) bookC.round_trips.forEach(r => rts.push([r, "C"]));
+  rts.sort((x, y) => String(y[0].closed_at||"").localeCompare(String(x[0].closed_at||"")));
+  $("rtList").innerHTML = rts.length ? rts.slice(0, 60).map(([r, tag]) =>
+    `<div class="row">${bk(tag)} ${sym(r.symbol)}
+       <span class="rpnl ${cls(r.pnl)}">${money0(r.pnl)} <span class="sub">${esc(String(r.return_pct))}%</span></span>
+       <span class="rmid">${esc(r.direction)} ${esc(String(r.qty))} · ${money(r.entry_price)} → ${money(r.exit_price)} · ${fmtTs(r.closed_at)}</span>
+     </div>`).join("")
+    : `<div class="empty">No closed trades yet</div>`;
+
+  // --- merged trade log --------------------------------------------------
+  const logs = [];
+  (st.trade_log || []).forEach(t => logs.push([t, primaryTag]));
+  if (bookB && bookB.trade_log) bookB.trade_log.forEach(t => logs.push([t, "B"]));
+  if (bookC && bookC.trade_log) bookC.trade_log.forEach(t => logs.push([t, "C"]));
+  logs.sort((x, y) => String(y[0].ts||"").localeCompare(String(x[0].ts||"")));
+  $("logList").innerHTML = logs.length ? logs.slice(0, 60).map(([t, tag]) =>
+    `<div class="row">${bk(tag)} ${sym(t.symbol)}
+       <span class="side-${esc(t.side)}">${esc(t.side)}</span>
+       <span class="muted">${esc(String(t.qty))} @ ${money(t.price)}</span>
+       ${t.source ? `<span class="srcchip">${esc(t.source)}</span>` : ""}
+       <span class="rpnl sub muted">${t.review ? '<span class="badge">'+conf(t.confidence)+'</span> ' : ""}${fmtTs(t.ts)}</span>
+     </div>`).join("")
+    : `<div class="empty">No trades yet</div>`;
+
+  // --- per-book stats strip ---------------------------------------------
+  $("stats").innerHTML = [statLine(primaryTag, st.summary),
+    bookB ? statLine("B", bookB.summary) : "",
+    bookC ? statLine("C", bookC.summary) : ""].filter(Boolean).join("<br>");
+
+  // --- changelog ---------------------------------------------------------
+  const clog = st.changelog || [];
+  $("changelog").innerHTML = clog.length ? clog.map(c => {
+    const d = new Date(c.ts);
+    const when = isNaN(d) ? "" : d.toLocaleDateString([], {month:"short", day:"numeric"})
+      + " " + d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+    return `<div class="cl">
+      <div class="cl-head"><span class="cl-kind ${esc(c.kind||"update")}">${esc(c.kind||"update")}</span>
+        <b>${esc(c.title||"")}</b><span class="cl-when">${when}</span></div>
+      <div class="cl-sum">${esc(c.summary||"")}</div></div>`;
+  }).join("") : `<div class="empty">No updates logged yet</div>`;
+}
+
+function statLine(tag, s){
+  if (!s) return "";
+  return bk(tag) + " " + (s.closed_trades ? s.win_rate + "%" : "—") + " win · "
+    + (s.closed_trades || 0) + " trades · PF "
+    + (s.profit_factor == null ? "—" : s.profit_factor);
+}
+
+// One headline: realized P&L on the SHARED entries, per book. Not an account
+// delta (books hold different books) — just each book's own realized total on
+// the trades all three took. null total => "—"; nothing realized yet => copy.
+function renderSharedTotals(shared){
+  const el = $("sharedTotals");
+  if (!shared){ el.style.display = "none"; el.innerHTML = ""; return; }
+  el.style.display = "";
+  const t = shared.totals || {};
+  const anyReal = ["a", "b", "c"].some(k => t[k] != null);
+  if (!anyReal){
+    el.innerHTML = `<div class="sb-label">Shared entries — realized:</div>`
+      + `<span class="sb-empty">Fills in as the books close the same entries.</span>`;
+    return;
+  }
+  const cell = tag => {
+    const v = t[tag.toLowerCase()];
+    return `${bk(tag)} <span class="${v == null ? "muted" : cls(v)}">`
+      + `${v == null ? "—" : money0(v)}</span>`;
+  };
+  el.innerHTML = `<div class="sb-label">Shared entries — realized:</div>
+    <div class="sb-totals">${cell("A")} · ${cell("B")} · ${cell("C")}</div>`;
+}
+
+function renderMirrorEl(elId, m, label, legsKey){
+  const el = $(elId);
+  if (!m){ el.style.display = "none"; el.textContent = ""; return; }
+  el.style.display = "";
+  el.textContent = label + " " + (m.phase || "?")
+    + (m.queue_depth != null ? " · queue " + m.queue_depth : "")
+    + (m.age_s != null ? " · " + Math.round(m.age_s) + "s" : "")
+    + (m[legsKey] != null ? " · " + m[legsKey] + " legs" : "")
+    + (m.armed_trails != null ? " · " + m.armed_trails + " trails" : "");
+}
+
+// One row for one book's handling of a shared entry: its exits (ts·price·source
+// chips), its own realized P&L, and a status mark. A book that never held the
+// entry renders a muted "— not held". This is the unit the operator wanted:
+// three book-rows under one entry, each showing its own return, no pairwise
+// deltas — the three lines compare themselves.
+function bookRow(tag, s){
+  if (!s || s.held === false){
+    return `<div class="brow brow-${tag.toLowerCase()} muted">`
+      + `<div class="brow-head">${bk(tag)} <span class="bnh">— not held</span></div></div>`;
+  }
+  const exits = (s.exits || []).map(x =>
+    `<span class="exitchip">${fmtTs(x.ts)} · ${money(x.price)}`
+    + `${x.qty != null ? " ×" + esc(String(x.qty)) : ""}`
+    + `${x.source ? ` <span class="srcchip">${esc(x.source)}</span>` : ""}</span>`
+  ).join("");
+  let status;
+  if (s.status === "closed"){
+    status = `<span class="stat closed">closed</span>`;
+  } else {
+    const sold = (s.exits || []).reduce((a, x) => a + (Number(x.qty) || 0), 0);
+    const rem = (Number(s.qty) || 0) - sold;
+    const n = isFinite(rem) && rem > 0 ? rem : (s.qty != null ? esc(String(s.qty)) : "");
+    status = `<span class="stat open">holding${n !== "" ? " " + n : ""}</span>`;
+  }
+  const pnl = s.realized_pnl != null
+    ? `<span class="brow-pnl ${cls(s.realized_pnl)}">${money0(s.realized_pnl)}</span>` : "";
+  return `<div class="brow brow-${tag.toLowerCase()}">
+    <div class="brow-head">${bk(tag)} ${pnl} ${status}</div>
+    ${exits ? `<div class="brow-exits">${exits}</div>`
+            : `<div class="brow-exits muted">no exits yet</div>`}
+  </div>`;
+}
+
+// One card per shared entry: humanized OCC + entry date/price header ONCE, then
+// up to three book-rows. The reader compares the three exits directly.
+function entryCard(e){
+  if (!e) return "";
+  const meta = [];
+  if (e.entry_date) meta.push("entry " + fmtDate(e.entry_date));
+  const held = [e.a, e.b, e.c].find(s => s && s.held !== false && s.entry_vwap != null);
+  if (held && held.entry_vwap != null) meta.push(money(held.entry_vwap));
+  return `<div class="pair">
+    <div class="pair-head">${sym(e.symbol)}</div>
+    ${meta.length ? `<div class="pair-entry muted">${meta.join(" · ")}</div>` : ""}
+    <div class="brows">${bookRow("A", e.a)}${bookRow("B", e.b)}${bookRow("C", e.c)}</div>
+  </div>`;
+}
+
+// Per-book daily P&L (NOT a head-to-head — A still carries pre-fork legs) plus
+// the execution-noise aggregate. Both are neutral facts kept beneath the entry
+// cards. Daily reads ab.daily (a_pnl/b_pnl, optional c_pnl); noise prefers
+// shared.noise then ab.noise. All null-guarded.
+function dailyNoiseHtml(st){
+  const ab = st.ab || null;
+  const daily = (ab && ab.daily) || [];
+  const noise = (st.shared && st.shared.noise) || (ab && ab.noise) || null;
+  const hasC = daily.some(d => d && d.c_pnl != null);
+  let h = `<div class="abk">Daily P&L per book — each account's own, not a head-to-head (A still holds pre-fork legs)</div>`;
+  if (!daily.length){
+    h += `<div class="empty">No completed days since the fork yet — fills in after today's close.</div>`;
+  } else {
+    const shown = daily.slice(-14);
+    h += `<table class="abtbl"><tr><th>Date</th><th>A day</th><th>B day</th>${hasC ? "<th>C day</th>" : ""}</tr>`
+      + shown.map(d => {
+        const cv = d.c_pnl != null ? d.c_pnl : null;
+        return `<tr><td>${fmtDate(d.date)}</td>
+          <td class="${cls(d.a_pnl)}">${mfmt(d.a_pnl)}</td>
+          <td class="${cls(d.b_pnl)}">${mfmt(d.b_pnl)}</td>
+          ${hasC ? `<td class="${cv == null ? "muted" : cls(cv)}">${mfmt(cv)}</td>` : ""}</tr>`;
+      }).reverse().join("") + `</table>`;
+  }
+  h += `<div class="abk">Execution noise</div>`;
+  if (!noise || !(Number(noise.pairs) > 0)){
+    h += `<div class="empty">No paired fills yet — populates as the books trade together.</div>`;
+  } else {
+    const unp = (Number(noise.unpaired_a) || Number(noise.unpaired_b))
+      ? ` · unpaired A ${noise.unpaired_a || 0} / B ${noise.unpaired_b || 0}` : "";
+    h += `<div class="sub">${money(noise.total_usd)} across ${noise.pairs} paired fills${unp}</div>`;
+  }
+  return h;
+}
+
+// The unified comparison: one card per shared entry, then the daily/noise facts.
+// Gated on st.shared — an old A/B-only payload (no shared key) hides the whole
+// section and the rest of the page renders normally.
+function renderShared(st){
+  const shared = st.shared || null;
+  const sec = $("secShared");
+  if (!shared){ sec.style.display = "none"; $("sharedBody").innerHTML = ""; return; }
+  sec.style.display = "";
+  const entries = shared.entries || [];
+  let h = entries.length
+    ? entries.map(entryCard).join("")
+    : `<div class="empty">No shared entries yet — appears once the books trade the same entry.</div>`;
+  h += dailyNoiseHtml(st);
+  $("sharedBody").innerHTML = h;
+  // Auto-open once there is at least one entry; a manual close then sticks.
+  if (!SHARED_AUTO && entries.length){ sec.open = true; SHARED_AUTO = true; }
+}
+
+function sparkline(vals){
+  if (!vals || vals.length < 2) return "";
+  const W = 300, H = 44, pad = 3;
+  let lo = Math.min.apply(null, vals.concat([0])), hi = Math.max.apply(null, vals.concat([0]));
+  if (hi === lo){ hi += 1; lo -= 1; }
+  const x = i => pad + (W - 2 * pad) * i / (vals.length - 1);
+  const y = v => pad + (H - 2 * pad) * (1 - (v - lo) / (hi - lo));
+  const line = vals.map((v, i) => x(i).toFixed(1) + "," + y(v).toFixed(1)).join(" ");
+  const col = vals[vals.length - 1] >= 0 ? "#3fb950" : "#f85149";
+  const zy = y(0).toFixed(1);
+  return `<svg id="abspark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    <line x1="${pad}" y1="${zy}" x2="${W - pad}" y2="${zy}" stroke="#8b98a9" stroke-dasharray="3 4" stroke-width="1" opacity=".5"/>
+    <polyline points="${line}" fill="none" stroke="${col}" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+}
+
+// ---------------------------------------------------------------------------
+// Equity chart. Up to THREE curves plotted RAW — A in its own ~$106.9k frame,
+// B and C in their $100k frames, one shared axis (no rebasing: A still carries
+// pre-fork positions, so forcing a common start would misrepresent). Fork =
+// zoom to ts >= fork_date, still raw. Any book with < 2 points drops out, so
+// the chart degrades to A/B (or A-only) without error.
+// ---------------------------------------------------------------------------
+let CHART_TAB = "1D", CHART_STATE = null;
+const _ET_TZ = "America/New_York";
+const etDay = ts => new Date(ts).toLocaleDateString("en-CA", { timeZone: _ET_TZ });
+const etTime = ts => new Date(ts).toLocaleTimeString([], {
+  hour: "2-digit", minute: "2-digit", timeZone: _ET_TZ });
+
+function setChartTab(tab){ CHART_TAB = tab; if (CHART_STATE) renderChart(CHART_STATE); }
+
+function renderChart(st){
+  CHART_STATE = st;
+  const el = $("equityChart");
+  const clean = arr => (arr || []).filter(p => p && p.equity != null);
+  const histA = clean(st.equity_history).slice()
+    .sort((a, b) => new Date(a.ts) - new Date(b.ts));
+  const histB = clean(st.equity_history_b).slice()
+    .sort((a, b) => new Date(a.ts) - new Date(b.ts));
+  const histC = clean(st.equity_history_c).slice()
+    .sort((a, b) => new Date(a.ts) - new Date(b.ts));
+  const dailyA = clean(st.equity_daily), dailyB = clean(st.equity_daily_b);
+  const dailyC = clean(st.equity_daily_c);
+  const ab = st.ab || null;
+
+  const tabs = (ab && ab.fork_date) ? ["1D", "1W", "All", "Fork"] : ["1D", "1W", "All"];
+  if (tabs.indexOf(CHART_TAB) < 0) CHART_TAB = "1D";
+  $("chartTabs").innerHTML = tabs.map(t =>
+    `<a href="#" onclick="setChartTab('${t}');return false" class="tab${t === CHART_TAB ? " on" : ""}">${t}</a>`
+  ).join("");
+
+  const mk = arr => arr.map(p => ({ t: Date.parse(p.ts || p.date), v: Number(p.equity) }))
+    .filter(p => isFinite(p.t) && isFinite(p.v));
+  let A = [], B = [], C = [], base = null, xlab = t => etDay(t);
+  if (CHART_TAB === "1D"){
+    const ref = histA.length ? histA[histA.length - 1].ts
+      : (histB.length ? histB[histB.length - 1].ts
+        : (histC.length ? histC[histC.length - 1].ts : null));
+    const today = ref ? etDay(ref) : null;
+    A = mk(histA.filter(p => etDay(p.ts) === today));
+    B = mk(histB.filter(p => etDay(p.ts) === today));
+    C = mk(histC.filter(p => etDay(p.ts) === today));
+    base = Number(st.prev_close_equity || (st.account || {}).last_equity || 0)
+      || (A[0] && A[0].v) || null;
+    xlab = t => etTime(t);
+  } else if (CHART_TAB === "1W"){
+    A = mk(histA); B = mk(histB); C = mk(histC);
+    base = A.length ? A[0].v : null;
+    xlab = t => etDay(t).slice(5) + " " + etTime(t);
+  } else if (CHART_TAB === "All"){
+    A = mk(dailyA); B = mk(dailyB); C = mk(dailyC);
+    base = A.length ? A[0].v : null;
+  } else { // Fork: zoom to ts >= fork_date, raw values
+    const f = Date.parse(ab.fork_date);
+    const dA = mk(dailyA).filter(p => p.t >= f), dB = mk(dailyB).filter(p => p.t >= f),
+          dC = mk(dailyC).filter(p => p.t >= f);
+    if (dA.length >= 2 || dB.length >= 2 || dC.length >= 2){ A = dA; B = dB; C = dC; }
+    else {
+      A = mk(histA).filter(p => p.t >= f);
+      B = mk(histB).filter(p => p.t >= f);
+      C = mk(histC).filter(p => p.t >= f);
+      xlab = t => etDay(t).slice(5) + " " + etTime(t);
+    }
+    base = null;
+  }
+
+  const present = [];
+  if (A.length >= 2) present.push({ tag: "A", pts: A, col: "#58a6ff" });
+  if (B.length >= 2) present.push({ tag: "B", pts: B, col: "#d29922" });
+  if (C.length >= 2) present.push({ tag: "C", pts: C, col: "#bc8cff" });
+  if (!present.length){
+    el.innerHTML = "";
+    $("chartDelta").innerHTML = "";
+    $("chartRange").textContent =
+      CHART_TAB === "1D" ? "waiting for market open" : "not enough data yet";
+    return;
+  }
+  const multi = present.length >= 2;
+  if (multi && CHART_TAB !== "1D") base = null; // A's baseline only means "prev close" intraday
+
+  const both = present.reduce((acc, c) => acc.concat(c.pts), []);
+  const W = 600, H = 160, pad = 8;
+  let lo = Infinity, hi = -Infinity, t0 = Infinity, t1 = -Infinity;
+  both.forEach(p => { if (p.v < lo) lo = p.v; if (p.v > hi) hi = p.v;
+    if (p.t < t0) t0 = p.t; if (p.t > t1) t1 = p.t; });
+  if (base != null){ lo = Math.min(lo, base); hi = Math.max(hi, base); }
+  if (hi === lo){ hi += 1; lo -= 1; }
+  const span = hi - lo; lo -= span * 0.08; hi += span * 0.08;
+  if (t1 === t0) t1 = t0 + 1;
+  const x = t => pad + (W - 2 * pad) * (t - t0) / (t1 - t0);
+  const y = v => pad + (H - 2 * pad) * (1 - (v - lo) / (hi - lo));
+  const path = pts => pts.map(p => x(p.t).toFixed(1) + "," + y(p.v).toFixed(1)).join(" ");
+
+  let baseLine = "";
+  if (base != null){
+    const by = y(base).toFixed(1);
+    baseLine = `<line x1="${pad}" y1="${by}" x2="${W - pad}" y2="${by}"
+      stroke="#8b98a9" stroke-dasharray="3 4" stroke-width="1" opacity=".55"/>`;
+  }
+
+  // base (prev close) only anchors A's intraday change; B/C are close-to-open.
+  const chgOf = c => c.pts[c.pts.length - 1].v -
+    ((CHART_TAB === "1D" && base != null && c.tag === "A") ? base : c.pts[0].v);
+  const fmtChg = d => `<span class="${d >= 0 ? "pos" : "neg"}">${money0(d)}</span>`;
+
+  if (multi){
+    let svg = baseLine;
+    present.forEach(c => {
+      svg += `<polyline points="${path(c.pts)}" fill="none" stroke="${c.col}" stroke-width="1.8" stroke-linejoin="round"/>`;
+    });
+    el.innerHTML = svg;
+    // Each group kept on one line; the space between groups is the wrap point.
+    $("chartDelta").innerHTML = present
+      .map(c => `<span style="white-space:nowrap">${bk(c.tag)} ${fmtChg(chgOf(c))}</span>`)
+      .join("&nbsp; ");
+  } else {
+    const pts = present[0].pts;
+    const last = pts[pts.length - 1].v;
+    const up = base == null ? true : last >= base;
+    const col = up ? "#3fb950" : "#f85149";
+    const line = path(pts);
+    const area = `${x(pts[0].t).toFixed(1)},${H - pad} ${line} ${x(pts[pts.length - 1].t).toFixed(1)},${H - pad}`;
+    el.innerHTML =
+      `<defs><linearGradient id="eqg" x1="0" y1="0" x2="0" y2="1">
+         <stop offset="0" stop-color="${col}" stop-opacity=".22"/>
+         <stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>` +
+      `<polygon points="${area}" fill="url(#eqg)"/>` + baseLine +
+      `<polyline points="${line}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linejoin="round"/>`;
+    if (base != null && base > 0){
+      const d = last - base, pct = d / base * 100;
+      $("chartDelta").innerHTML = `<span class="${d >= 0 ? "pos" : "neg"}">`
+        + money0(d) + " (" + (d >= 0 ? "+" : "") + pct.toFixed(2) + "%)</span>";
+    } else {
+      $("chartDelta").innerHTML = "";
+    }
+  }
+  $("chartRange").textContent = xlab(t0) + " – " + xlab(t1);
+}
+
+async function load(){
+  const res = await fetch(stateUrl() + "?t=" + Date.now(), { cache: "no-store" });
+  if(!res.ok) throw new Error("state fetch failed ("+res.status+")");
+  const env = await res.json();
+  return decrypt(env, PASS);
+}
+
+// Access log: after a SUCCESSFUL unlock, ping the private topic whose URL lives
+// INSIDE the encrypted state — the public page source contains no endpoint, so
+// there is nothing to scrape or spam. Failed unlocks are deliberately NOT
+// beaconed (that would require a public endpoint in the page). Once per browser
+// session; the device label reuses the notes author name if one was saved.
+function accessPing(st, mode){
+  try {
+    if (!st.access_ping_url || sessionStorage.getItem("subtweet_access_pinged")) return;
+    sessionStorage.setItem("subtweet_access_pinged", "1");
+    const who = localStorage.getItem("subtweet_note_author") || "unnamed device";
+    const plat = (navigator.userAgentData && navigator.userAgentData.platform)
+      || navigator.platform || "?";
+    fetch(st.access_ping_url, {
+      method: "POST",
+      headers: { "Title": "dashboard access", "Priority": "min", "Tags": "unlock" },
+      body: "\u{1F513} dashboard unlocked - " + who + " (" + mode + ", " + plat + ")",
+    }).catch(() => {});
+  } catch(e){}
+}
+
+// --- trader toggle: Sam <-> Banana, sharing the one in-memory passphrase -----
+function setTraderUI(trader){
+  document.querySelectorAll("#traderTabs .seg").forEach(b =>
+    b.setAttribute("aria-selected", b.dataset.trader === trader ? "true" : "false"));
+}
+function showTraderNotice(){
+  const n = $("traderNotice");
+  if (!n) return;
+  n.textContent = "Banana view isn't published yet — showing Sam.";
+  n.style.display = "";
+}
+let SWITCHING = false;
+async function switchTrader(trader){
+  if ((trader !== "sam" && trader !== "banana") || SWITCHING
+      || trader === currentTrader()) return;
+  SWITCHING = true;
+  localStorage.setItem(TRADER_KEY, trader);
+  setTraderUI(trader);
+  $("traderNotice").style.display = "none";
+  LAST_GEN = null;                       // force a full relabel/rebuild on switch
+  try {
+    render(await load());                // reuse the in-memory PASS; no re-prompt
+  } catch(e){
+    // Not published yet (404) or any fetch/decrypt hiccup: fall back to Sam and
+    // flag it inline — never leave the page blank or throw uncaught.
+    localStorage.setItem(TRADER_KEY, "sam");
+    setTraderUI("sam");
+    showTraderNotice();
+    LAST_GEN = null;
+    try { render(await load()); } catch(_){ /* Sam already on screen */ }
+  } finally {
+    SWITCHING = false;
+  }
+}
+
+let TIMER = null;
+async function enter(passphrase, remember, mode){
+  PASS = passphrase;
+  let st;
+  try {
+    st = await load();                   // throws on wrong passphrase OR banana 404
+  } catch(e){
+    // A remembered "banana" selection that isn't published yet must not block a
+    // valid passphrase: fall back to Sam, then let a genuine bad passphrase throw.
+    if (currentTrader() === "banana"){
+      localStorage.setItem(TRADER_KEY, "sam");
+      showTraderNotice();
+      st = await load();
+    } else {
+      throw e;
+    }
+  }
+  if (remember) localStorage.setItem(STORAGE_KEY, passphrase);
+  $("gate").style.display = "none";
+  $("app").style.display = "";
+  setTraderUI(currentTrader());
+  render(st);
+  accessPing(st, mode || "manual");
+  if (TIMER) clearInterval(TIMER);
+  // Skip the auto-refresh while a note is being written (it would wipe the form).
+  // load() reads the *current* trader each tick, so the timer follows the toggle.
+  TIMER = setInterval(async () => {  // refresh cadence (was 60s -> 20s)
+    if (EDITING) return;
+    try { render(await load()); } catch(e){}
+  }, 20000);
+}
+
+function anyFormOpen(){
+  return Array.from(document.querySelectorAll(".noteform"))
+    .some(f => f.style.display !== "none");
+}
+
+async function unlock(){
+  $("err").textContent = "";
+  $("unlock").disabled = true;
+  try {
+    await enter($("pass").value, $("remember").checked);
+  } catch(e){
+    $("err").textContent = "Wrong passphrase or no data yet.";
+    PASS = null;
+  }
+  $("unlock").disabled = false;
+}
+
+function lock(){
+  localStorage.removeItem(STORAGE_KEY);
+  if (TIMER) clearInterval(TIMER);
+  PASS = null;
+  location.reload();
+}
+
+$("unlock").addEventListener("click", unlock);
+$("pass").addEventListener("keydown", (e) => { if(e.key === "Enter") unlock(); });
+$("lock").addEventListener("click", (e) => { e.preventDefault(); lock(); });
+
+// Trader toggle: swap the encrypted source without re-prompting for the pass.
+document.querySelectorAll("#traderTabs .seg").forEach(b =>
+  b.addEventListener("click", () => switchTrader(b.dataset.trader)));
+
+// Changelog modal: header button opens it, close button / backdrop / Esc close.
+const clHide = () => { $("clModal").style.display = "none"; };
+$("clOpen").addEventListener("click", () => { $("clModal").style.display = "flex"; });
+$("clClose").addEventListener("click", clHide);
+$("clModal").addEventListener("click", (e) => { if (e.target.id === "clModal") clHide(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") clHide(); });
+
+// Manual refresh: re-pull the latest published snapshot on demand.
+$("refresh").addEventListener("click", async () => {
+  const b = $("refresh");
+  b.disabled = true; b.textContent = "…";
+  try { render(await load()); b.textContent = "✓"; }
+  catch(e){ b.textContent = "✕"; }
+  setTimeout(() => { b.textContent = "⟳"; b.disabled = false; }, 1200);
+});
+
+// Delegated handlers for the per-tweet note forms (rebuilt on every refresh).
+$("tweets").addEventListener("click", async (e) => {
+  const add = e.target.closest(".addnote");
+  if (add) {
+    const form = add.parentElement.querySelector(".noteform");
+    const opening = form.style.display === "none";
+    form.style.display = opening ? "" : "none";
+    if (opening) form.querySelector(".note-text").focus();
+    EDITING = anyFormOpen();
+    return;
+  }
+  const save = e.target.closest(".note-save");
+  if (save) {
+    const form = save.closest(".noteform");
+    const text = form.querySelector(".note-text").value.trim();
+    const by = form.querySelector(".note-by").value.trim();
+    const status = form.querySelector(".note-status");
+    if (!text) { status.textContent = "write something first"; return; }
+    // Remember the author name on this device — it also labels the access log.
+    if (by) { try { localStorage.setItem("subtweet_note_author", by); } catch(e){} }
+    save.disabled = true; status.textContent = "saving…";
+    try {
+      await submitNote(TWEETS[+save.dataset.tw], text, by);
+      status.textContent = "saved — appears within a minute";
+      form.querySelector(".note-text").value = "";
+      setTimeout(() => { form.style.display = "none"; EDITING = anyFormOpen(); }, 1500);
+    } catch (err) {
+      status.textContent = err.message || "failed";
+    }
+    save.disabled = false;
+  }
+});
+
+// Auto-unlock if a passphrase was remembered on this device.
+(async () => {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) return;
+  $("remember").checked = true;
+  try { await enter(saved, true, "auto"); }
+  catch(e){ localStorage.removeItem(STORAGE_KEY); }  // stale (e.g. rotated pass)
+})();
+</script>
+</body>
+</html>
